@@ -76,8 +76,8 @@ static nx_devp_t saved_nx_devp = NULL;
 static int disable_saved_nx_devp = 1;
 
 int nx_dbg = 0;
-int nx_gzip_accelerator = NX_GZIP_TYPE;
-int nx_gzip_chip_num = -1;
+int gzip_selector = GZIP_NX;
+int nx_gzip_chip_num = -1;		
 
 int nx_gzip_trace = 0x0;
 FILE *nx_gzip_log = NULL;		/* default is stderr, unless overwritten */
@@ -706,6 +706,8 @@ static void print_stats(void)
 	prt_stat("API call statistic:\n");
 	prt_stat("deflateInit: %ld\n", s->deflateInit);
 	prt_stat("deflate: %ld\n", s->deflate);
+	prt_stat("\tdeflate(sw): %ld\n", s->deflate_sw);
+	prt_stat("\tdeflate(nx): %ld\n", s->deflate_nx);
 
 	for (i = 0; i < ARRAY_SIZE(s->deflate_avail_in); i++) {
 		if (s->deflate_avail_in[i] == 0)
@@ -723,8 +725,12 @@ static void print_stats(void)
 
 	prt_stat("deflateBound: %ld\n", s->deflateBound);
 	prt_stat("deflateEnd: %ld\n", s->deflateEnd);
+	prt_stat("compress: %ld\n", s->compress);
+
 	prt_stat("inflateInit: %ld\n", s->inflateInit);
 	prt_stat("inflate: %ld\n", s->inflate);
+	prt_stat("\tinflate(sw): %ld\n", s->inflate_sw);
+	prt_stat("\tinflate(nx): %ld\n", s->inflate_nx);
 
 	for (i = 0; i < ARRAY_SIZE(s->inflate_avail_in); i++) {
 		if (s->inflate_avail_in[i] == 0)
@@ -741,18 +747,22 @@ static void print_stats(void)
 	}
 
 	prt_stat("inflateEnd: %ld\n", s->inflateEnd);
+	prt_stat("uncompress: %ld\n", s->uncompress);
 
 	prt_stat("deflate data length: %ld KiB\n", s->deflate_len/1024);
 #ifndef __KERNEL__
 	prt_stat("deflate time: %1.2f secs\n",nxtime_to_us(s->deflate_time)/1000000);
 	prt_stat("deflate rate: %1.2f MiB/s\n", s->deflate_len/(1024*1024)/(nxtime_to_us(s->deflate_time)/1000000));
 #endif
+	prt_stat("deflate lat: %lld (us)\n", s->deflate_time/s->deflate);
 
 	prt_stat("inflate data length: %ld KiB\n", s->inflate_len/1024);
 #ifndef __KERNEL__
 	prt_stat("inflate time: %1.2f secs\n",nxtime_to_us(s->inflate_time)/1000000);
 	prt_stat("inflate rate: %1.2f MiB/s\n", s->inflate_len/(1024*1024)/(nxtime_to_us(s->inflate_time)/1000000));
-#endif
+#endif        
+	prt_stat("inflate lat: %lld (us)\n", s->inflate_time/s->inflate);
+	
 
 	pthread_mutex_unlock(&zlib_stats_mutex);
 
@@ -904,6 +914,7 @@ void nx_hw_init(void)
 
 	char *mlock_csb  = getenv("NX_GZIP_MLOCK_CSB"); /* 0 or 1 */
 	char *dis_savdev = getenv("NX_GZIP_DIS_SAVDEVP"); /* 0 or 1 */
+	char *accel_s    = getenv("GZIP_TYPE_SELECTOR"); /* selector for sw or hw gzip implementation*/
 	char *verbo_s    = getenv("NX_GZIP_VERBOSE"); /* 0 to 255 */
 	char *chip_num_s = getenv("NX_GZIP_DEV_NUM"); /* -1 for default, 0 for vas_id 0, 1 for vas_id 1 2 for both */
 	char *def_bufsz  = getenv("NX_GZIP_DEF_BUF_SIZE"); /* KiB MiB GiB suffix */
@@ -940,8 +951,6 @@ void nx_hw_init(void)
 	nx_config.paste_retries = 5000;
 	nx_config.pgfault_retries = INT_MAX;
 
-	nx_gzip_accelerator = NX_GZIP_TYPE;
-
 	if (!cfg_file_s)
 		cfg_file_s = "./nx-zlib.conf";
 	memset(&cfg_tab, 0, sizeof(cfg_tab));
@@ -976,6 +985,8 @@ void nx_hw_init(void)
 			paste_retries = nx_get_cfg("paste_retries", &cfg_tab);
 		if (!pgfault_retries)
 			pgfault_retries = nx_get_cfg("pgfault_retries", &cfg_tab);
+		if (!accel_s)
+			accel_s = nx_get_cfg("nx_selector", &cfg_tab);
 	}
 
 	/* log file should be initialized first*/
@@ -998,12 +1009,17 @@ void nx_hw_init(void)
 	nx_count = nx_enumerate_engines();
 	nx_dev_count = nx_count;
 	if (nx_count == 0) {
-		prt_err("NX-gzip accelerators found: %d\n", nx_count);
-		return;
+		prt_err("NX-gzip accelerators found: %d\n", nx_count);		  
+		gzip_selector = GZIP_SW; /*fallback to use software zlib*/
+		//return;
 	}
 
-	prt_info("%d NX GZIP Accelerator Found!\n",nx_count);
-
+	prt("%d NX GZIP Accelerator Found!\n",nx_count);
+	if(accel_s != NULL){
+		gzip_selector = str_to_num(accel_s);	
+		prt("gzip_selector: %d (1-SW;2-NX;3-MIX)\n", gzip_selector);
+	}
+	
 	if (trace_s != NULL)
 		nx_gzip_trace = strtol(trace_s, (char **)NULL, 0);
 
@@ -1117,6 +1133,8 @@ static void _nx_hwinit(void) __attribute__((constructor));
 static void _nx_hwinit(void)
 {
 	nx_hw_init();
+	/* nx_open(-1); */
+	sw_zlib_init();
 }
 
 void nx_hw_done(void)
@@ -1129,6 +1147,7 @@ void nx_hw_done(void)
 	if (nx_gzip_log != stderr) {
 		nx_gzip_log = NULL;
 	}
+	sw_zlib_close();
 }
 
 static void _nx_hwdone(void) __attribute__((destructor));

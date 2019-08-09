@@ -57,7 +57,13 @@
 #ifndef _NX_ZLIB_H
 #define _NX_ZLIB_H
 
-#define NX_GZIP_TYPE  9  /* 9 for P9 */
+#define GZIP_SW		0x01 /* software gzip */
+#define GZIP_NX		0x02 /* nx gzip */
+#define GZIP_MIX	0x03 /* mix sw and nx*/
+
+#define COMPRESS_THRESHOLD	(64*1024)
+#define DECOMPRESS_THRESHOLD	(64*1024)
+
 
 #define NX_MIN(X,Y) (((X)<(Y))?(X):(Y))
 #define NX_MAX(X,Y) (((X)>(Y))?(X):(Y))
@@ -92,6 +98,7 @@
 extern FILE *nx_gzip_log;
 extern FILE *nx_gzip_critical_log;
 void nx_print_dde(nx_dde_t *ddep, const char *msg);
+extern int gzip_selector;
 
 /* common config variables for all streams */
 struct nx_config_t {
@@ -148,41 +155,47 @@ typedef struct nx_dev_t *nx_devp_t;
 /* save recent header bytes for hcrc calculations */
 typedef struct ckbuf_t { char buf[128]; } ckbuf_t; 
 
+#define MAGIC1 0x1234567812345678ull
+#define MAGIC2 0xfeedbeeffeedbeefull
+
+
 /* z_stream equivalent of NX hardware */
 typedef struct nx_stream_s {
-        /* parameters for the supported functions */
-        int             level;          /* compression level */
-        int             method;         /* must be Z_DEFLATED for zlib */
-        int             windowBits;     /* also encodes zlib/gzip/raw */
+	uint64_t        magic1;	
+	/* parameters for the supported functions */
+	int             level;          /* compression level */
+	int             method;         /* must be Z_DEFLATED for zlib */
+	int             windowBits;     /* also encodes zlib/gzip/raw */
 
-        int             memLevel;       /* 1...9 (default=8) */
-        int             strategy;       /* force compression algorithm */
+	int             memLevel;       /* 1...9 (default=8) */
+	int             strategy;       /* force compression algorithm */
+	uint64_t        magic2;
 
-        /* stream data management */
-        unsigned char   *next_in;       /* next input byte */
-        uint32_t        avail_in;       /* # of bytes available at next_in */
-        unsigned long   total_in;       /* total nb of inp read so far */
+	/* stream data management */
+	unsigned char   *next_in;       /* next input byte */
+	uint32_t        avail_in;       /* # of bytes available at next_in */
+	unsigned long   total_in;       /* total nb of inp read so far */
 
-        unsigned char   *next_out;      /* next obyte should be put there */
-        uint32_t        avail_out;      /* remaining free space at next_out*/
-        unsigned long   total_out;      /* total nb of bytes output so far */
+	unsigned char   *next_out;      /* next obyte should be put there */
+	uint32_t        avail_out;      /* remaining free space at next_out*/
+	unsigned long   total_out;      /* total nb of bytes output so far */
 
-        /* private area */
+	/* private area */
 	uint32_t        adler;          /* one of adler32 or crc32 */
 
-        uint32_t        adler32;        /* machine generated */
-        uint32_t        crc32;          /* checksums of bytes
-                                         * compressed then written to
-                                         * the stream out. note that
-                                         * this interpretation is
-                                         * different than zlib.h which
-                                         * says checksums are
-                                         * immediately updated upon
-                                         * reading from the input
-                                         * stream. Checksums will reflect
-					 * the true values only after
-					 * the stream is finished or fully
-					 * flushed to the output */
+	uint32_t        adler32;        /* machine generated */
+	uint32_t        crc32;          /* checksums of bytes
+					* compressed then written to
+					* the stream out. note that
+					* this interpretation is
+					* different than zlib.h which
+					* says checksums are
+					* immediately updated upon
+					* reading from the input
+					* stream. Checksums will reflect
+					* the true values only after
+					* the stream is finished or fully
+					* flushed to the output */
 	uint64_t        checksum_set;   /* nx wrap function code helper */
 
 	int             header_len;
@@ -191,12 +204,12 @@ typedef struct nx_stream_s {
 	int             trailer_len;
 
 	uint64_t        total_time;     /* stream's total time running */
-  
+
 	uint16_t        hcrc16;         /* stored in the gzip header */
 	uint32_t        cksum;          /* running checksum of the header */
 	ckbuf_t         ckbuf;          /* hcrc16 helpers */
 	int             ckidx;
-	
+
 	int             inf_state;
 	int             inf_held;	
 	int		resuming;
@@ -206,7 +219,7 @@ typedef struct nx_stream_s {
 	int		invoke_cnt;  /* the times to invoke nx inflate or nx deflate */
 	void		*dhthandle;
 
-        z_streamp       zstrm;          /* point to the parent  */
+	z_streamp       zstrm;          /* point to the parent  */
 
 	gz_headerp      gzhead;         /* where to save gzip header information */
 	int             gzflags;        /* FLG */
@@ -219,65 +232,122 @@ typedef struct nx_stream_s {
 	unsigned int    dict_alloc_len;  
 	uint32_t        dict_id;
 	char            *dict;
-	
-	
+
+
 	int             status;         /* stream status */
-	
-        nx_devp_t       nxdevp;         /* nx hardware device */
-        int             wrap;           /* 0 raw, 1 zlib, 2 gzip */
-        long            page_sz;        
+
+	nx_devp_t       nxdevp;         /* nx hardware device */
+	int             wrap;           /* 0 raw, 1 zlib, 2 gzip */
+	long            page_sz;        
 
 	int             need_stored_block;
 	long            last_ratio;     /* compression ratio; 500
 					 * means 50% */
 	
-        char            *fifo_in;       /* user input collects here */
-        char            *fifo_out;      /* user output overflows here */        
+	char            *fifo_in;       /* user input collects here */
+	char            *fifo_out;      /* user output overflows here */        
 
-        int32_t         len_in;         /* fifo_in length */
-        int32_t         used_in;        /* fifo_in used bytes */
-        int32_t         cur_in;         /* fifo_in starting offset */
+	int32_t         len_in;         /* fifo_in length */
+	int32_t         used_in;        /* fifo_in used bytes */
+	int32_t         cur_in;         /* fifo_in starting offset */
 
-        int32_t         len_out;
-        int32_t         used_out;
-        int32_t         cur_out;
+	int32_t         len_out;
+	int32_t         used_out;
+	int32_t         cur_out;
 
-        /* return status */
-        int             nx_cc;          /* nx return codes */
-        uint32_t        nx_ce;          /* completion extension Fig.6-7 */       
-        int             z_rc;           /* libz return codes */
+	/* return status */
+	int             nx_cc;          /* nx return codes */
+	uint32_t        nx_ce;          /* completion extension Fig.6-7 */       
+	int             z_rc;           /* libz return codes */
 
 	uint32_t        spbc;
 	uint32_t        tpbc;
 	uint32_t        tebc;
 
-        /* nx commands */
-        /* int             final_block; */
-        int             flush;
+	/* nx commands */
+	/* int             final_block; */
+	int             flush;
 
 	uint32_t        dry_run;        /* compress by this amount
 					 * do not update pointers */
-        
-        /* nx command and parameter block; one command at a time per stream */
+	
+	/* nx command and parameter block; one command at a time per stream */
 	nx_gzip_crb_cpb_t *nxcmdp;  
-        nx_gzip_crb_cpb_t nxcmd0;      
+	nx_gzip_crb_cpb_t nxcmd0;      
 	/* nx_gzip_crb_cpb_t nxcmd1;       two cpb blocks to parallelize 
 					   lzcount processing */
-        
-        /* fifo_in is the saved amount from last deflate() call
-           fifo_out is the overflowed amount from last deflate()
-           call */
+
+	/* fifo_in is the saved amount from last deflate() call
+	   fifo_out is the overflowed amount from last deflate()
+	   call */
 
 	/* base, history, fifo_in first, and last, next_in */
-        nx_dde_t        *ddl_in;        
-        nx_dde_t        dde_in[5]  __attribute__ ((aligned (128)));
+	nx_dde_t        *ddl_in;        
+	nx_dde_t        dde_in[5]  __attribute__ ((aligned (128)));
 
 	/* base, next_out, fifo_out */	
-        nx_dde_t        *ddl_out;
-        nx_dde_t        dde_out[4] __attribute__ ((aligned (128)));
+	nx_dde_t        *ddl_out;
+	nx_dde_t        dde_out[4] __attribute__ ((aligned (128)));
+
+	/* software zlib switch and pointer*/
+	char            switchable; /*true means stream can be switched bw sw and hw*/
+	void		*bak_stream;
         
 } nx_stream;
 typedef struct nx_stream_s *nx_streamp;
+
+inline int has_nx_state(z_streamp strm)
+{
+	nx_streamp nx_state;
+
+	if (strm == NULL) return 0;
+	nx_state = (struct nx_stream_s *)strm->state;
+	if (nx_state == NULL) return 0;
+
+	return ((nx_state->magic1 == MAGIC1) && (nx_state->magic2 == MAGIC2));
+}
+
+static inline int use_nx_inflate(z_streamp strm)
+{
+	uint64_t rnd;
+	assert(strm != NULL);
+	
+	/*TBD: add more strategy here for determining use nx or sw zlib*/
+	
+	/* #1 Threshold*/
+	if(strm->avail_in <= DECOMPRESS_THRESHOLD) return 0;
+	
+	/* #2 Percentage*/
+	rnd = __ppc_get_timebase();
+	if( rnd%4 < 2){ /*50% - 50%*/
+		return 0;
+	}else{
+		return 1;
+	}
+}
+
+static inline int use_nx_deflate(z_streamp strm)
+{
+	assert(strm != NULL);
+	
+	/*TBD: add more strategy here for determining use nx or sw zlib*/
+	
+	/* #1 Threshold */
+	if(strm->avail_in <= COMPRESS_THRESHOLD) return 0;
+	return 1;
+}
+
+/*copied from zlib for debugging*/
+typedef struct sw_internal_state {
+	z_streamp strm;      /* pointer back to this zlib stream */
+	int   status;        /* as the name implies */
+	char *pending_buf;  /* output still pending */
+	unsigned long   pending_buf_size; /* size of pending_buf */
+	char *pending_out;  /* next pending byte to output to the stream */
+	unsigned int   pending;      /* nb of bytes in the pending buffer */
+	int   wrap;          /* bit 0 true for zlib, bit 1 true for gzip */
+
+} sw_internal_state;
 
 /* stream pointers and lengths manipulated */
 #define update_stream_out(s,b) do{(s)->next_out += (b); (s)->total_out += (b); (s)->avail_out -= (b);}while(0)
@@ -383,6 +453,8 @@ typedef enum {
 struct zlib_stats {
 	unsigned long deflateInit;
 	unsigned long deflate;
+	unsigned long deflate_sw;
+	unsigned long deflate_nx;
 	unsigned long deflate_avail_in[ZLIB_SIZE_SLOTS];
 	unsigned long deflate_avail_out[ZLIB_SIZE_SLOTS];
 	unsigned long deflateReset;
@@ -395,9 +467,12 @@ struct zlib_stats {
 	unsigned long deflatePrime;
 	unsigned long deflateCopy;
 	unsigned long deflateEnd;
+	unsigned long compress;
 
 	unsigned long inflateInit;
 	unsigned long inflate;
+	unsigned long inflate_sw;
+	unsigned long inflate_nx;
 	unsigned long inflate_avail_in[ZLIB_SIZE_SLOTS];
 	unsigned long inflate_avail_out[ZLIB_SIZE_SLOTS];
 	unsigned long inflateReset;
@@ -411,6 +486,7 @@ struct zlib_stats {
 	unsigned long inflatePrime;
 	unsigned long inflateCopy;
 	unsigned long inflateEnd;
+	unsigned long uncompress;
 	
 	uint64_t deflate_len;
 	uint64_t deflate_time;
@@ -424,12 +500,10 @@ extern pthread_mutex_t zlib_stats_mutex;
 extern struct zlib_stats zlib_stats; 
 inline void zlib_stats_inc(unsigned long *count)
 {
-        if (!nx_gzip_gather_statistics())
-                return;
+	if (!nx_gzip_gather_statistics())
+		return;
 
-        pthread_mutex_lock(&zlib_stats_mutex);
-        *count = *count + 1;
-        pthread_mutex_unlock(&zlib_stats_mutex);
+	__atomic_fetch_add(count, 1, __ATOMIC_RELAXED);
 }
 
 static inline uint64_t get_nxtime_now(void)
@@ -447,13 +521,13 @@ static inline uint64_t get_nxtime_diff(uint64_t t1, uint64_t t2)
 }
 
 #ifndef __KERNEL__
-static inline double nxtime_to_us(uint64_t nxtime)
+static inline uint64_t nxtime_to_us(uint64_t nxtime)
 {
 	uint64_t freq;
 
 	freq = __ppc_get_timebase_freq();
-	
-	return (double)(nxtime * 1000000 / freq) ;
+
+	return nxtime * 1000000 / freq ;
 }
 #endif
 
@@ -514,5 +588,37 @@ extern void *dht_begin(char *ifile, char *ofile);
 extern void dht_end(void *handle);
 extern int dht_lookup(nx_gzip_crb_cpb_t *cmdp, int request, void *handle);
 extern void *dht_copy(void *handle);
+
+/* sw_zlib.c*/
+extern void sw_zlib_init(void);
+extern void sw_zlib_close(void);
+extern const char *s_zlibVersion(void);
+extern int s_deflateInit_(z_streamp strm, int level, const char* version, int stream_size);
+extern int s_deflateInit2_(z_streamp strm, int level, int method, int windowBits, 
+			int memLevel, int strategy,    const char *version, int stream_size);
+extern int s_deflate(z_streamp strm, int flush);
+extern int s_deflateEnd(z_streamp strm);
+extern int s_deflateReset(z_streamp strm);
+extern int s_deflateResetKeep(z_streamp strm);
+extern int s_deflateSetHeader(z_streamp strm, gz_headerp head);
+extern uLong s_deflateBound(z_streamp strm, uLong sourceLen);
+extern int s_deflateSetDictionary(z_streamp strm, const Bytef *dictionary, uInt  dictLength);
+extern int s_uncompress(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen);
+extern int s_uncompress2(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen);
+
+
+extern int s_inflateInit_(z_streamp strm, const char *version, int stream_size);
+extern int s_inflateInit2_(z_streamp strm, int  windowBits, const char *version, int stream_size);
+extern int s_inflateReset(z_streamp strm);
+extern int s_inflateReset2(z_streamp strm, int windowBits);
+extern int s_inflateResetKeep(z_streamp strm);
+extern int s_inflateSetDictionary(z_streamp strm, const Bytef *dictionary, uInt  dictLength);
+extern int s_inflate(z_streamp strm, int flush);
+extern int s_inflateEnd(z_streamp strm);
+extern int s_compress(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen);
+extern int s_compress2(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen, int level);
+extern uLong s_compressBound(uLong sourceLen);
+
+
 
 #endif /* _NX_ZLIB_H */

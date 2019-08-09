@@ -29,7 +29,8 @@ int nx_uncompress2(Bytef *dest, uLongf *destLen, const Bytef *source, uLong *sou
         left = 1;
         dest = buf;
     }
-
+   
+    memset(&stream, 0, sizeof(stream));
     stream.next_in = (z_const Bytef *)source;
     stream.avail_in = 0;
     stream.zalloc = (alloc_func)0;
@@ -77,12 +78,25 @@ int nx_uncompress(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourc
 
 int uncompress(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen)
 {
-	return nx_uncompress(dest, destLen, source, sourceLen);
+	int rc;
+
+	if(gzip_selector == GZIP_MIX){
+		//TBD
+	}else if(gzip_selector == GZIP_NX){
+		rc = nx_uncompress(dest, destLen, source, sourceLen);
+	}else{
+		rc = s_uncompress(dest, destLen, source, sourceLen);
+	}
+
+	return rc;
 }
+
 int uncompress2(Bytef *dest, uLongf *destLen, const Bytef *source, uLong *sourceLen)
 {
 	return nx_uncompress2(dest, destLen, source, sourceLen);
 }
+
+
 
 #endif
 

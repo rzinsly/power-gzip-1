@@ -47,6 +47,7 @@ int nx_compress2(Bytef *dest, uLongf *destLen, const Bytef *source, uLong source
     remaining = *destLen;
     *destLen = 0;
 
+    memset(&stream, 0, sizeof(stream));
     stream.zalloc = (alloc_func)0;
     stream.zfree = (free_func)0;
     stream.opaque = (voidpf)0;
@@ -94,15 +95,36 @@ uLong nx_compressBound(uLong sourceLen)
 
 int compress(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen)
 {
-	return nx_compress(dest, destLen, source, sourceLen);
+	int rc; 
+	
+	if(gzip_selector == GZIP_MIX){
+	//TBD
+	}else if(gzip_selector == GZIP_NX){
+		rc = nx_compress(dest, destLen, source, sourceLen);
+	}else{
+		rc = s_compress(dest, destLen, source, sourceLen);
+	}
+
+	return rc;
 }
 int compress2(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen, int level)
 {
-	return nx_compress2(dest, destLen, source, sourceLen, level);
+	int rc;
+
+	if(gzip_selector == GZIP_MIX){
+	//TBD
+	}else if(gzip_selector == GZIP_NX){
+		rc = nx_compress2(dest, destLen, source, sourceLen, level);
+	}else{
+		rc = s_compress2(dest, destLen, source, sourceLen, level);
+	}
+
+	return rc;
 }
 uLong compressBound(uLong sourceLen)
 {
-	return nx_compressBound(sourceLen);
+	return	NX_MAX(nx_deflateBound(NULL, sourceLen),
+                   s_deflateBound(NULL, sourceLen));
 }
 
 #endif
