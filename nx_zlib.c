@@ -708,7 +708,7 @@ static void print_stats(void)
 	prt_stat("deflate: %ld\n", s->deflate);
 	prt_stat("\tdeflate(sw): %ld\n", s->deflate_sw);
 	prt_stat("\tdeflate(nx): %ld\n", s->deflate_nx);
-
+	
 	for (i = 0; i < ARRAY_SIZE(s->deflate_avail_in); i++) {
 		if (s->deflate_avail_in[i] == 0)
 			continue;
@@ -731,7 +731,7 @@ static void print_stats(void)
 	prt_stat("inflate: %ld\n", s->inflate);
 	prt_stat("\tinflate(sw): %ld\n", s->inflate_sw);
 	prt_stat("\tinflate(nx): %ld\n", s->inflate_nx);
-
+	
 	for (i = 0; i < ARRAY_SIZE(s->inflate_avail_in); i++) {
 		if (s->inflate_avail_in[i] == 0)
 			continue;

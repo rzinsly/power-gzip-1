@@ -75,18 +75,20 @@ int nx_uncompress(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourc
 }
 
 #ifdef ZLIB_API
-
 int uncompress(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen)
 {
 	int rc;
 
 	if(gzip_selector == GZIP_MIX){
-		//TBD
+		rc = s_uncompress(dest, destLen, source, sourceLen);
 	}else if(gzip_selector == GZIP_NX){
 		rc = nx_uncompress(dest, destLen, source, sourceLen);
 	}else{
 		rc = s_uncompress(dest, destLen, source, sourceLen);
 	}
+
+	/* statistic*/
+        zlib_stats_inc(&zlib_stats.uncompress);
 
 	return rc;
 }
@@ -95,8 +97,6 @@ int uncompress2(Bytef *dest, uLongf *destLen, const Bytef *source, uLong *source
 {
 	return nx_uncompress2(dest, destLen, source, sourceLen);
 }
-
-
 
 #endif
 

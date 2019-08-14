@@ -821,7 +821,7 @@ int nx_deflateInit2_(z_streamp strm, int level, int method, int windowBits,
 	void *temp = NULL;
 
 	if (strm == Z_NULL) return Z_STREAM_ERROR;
-
+	
 	/*If the stream has been initialized by sw*/
 	if(strm->state && (0 == has_nx_state(strm))){ 
 		temp = (void *)strm->state; /*keep this pointer*/
@@ -2449,20 +2449,8 @@ mem_error:
 #ifdef ZLIB_API
 int deflateInit_(z_streamp strm, int level, const char* version, int stream_size)
 {
-	int rc;
-
-	strm->state = NULL;
-	if(gzip_selector == GZIP_MIX){
-		/*call sw and nx initialization */
-		rc = s_deflateInit_(strm, level, version, stream_size);
-		rc = nx_deflateInit_(strm, level, version, stream_size);
-	}else if(gzip_selector == GZIP_NX){
-		rc = nx_deflateInit_(strm, level, version, stream_size);
-	}else{
-		rc = s_deflateInit_(strm, level, version, stream_size);
-	}
-
-	return rc;
+	return deflateInit2_(strm, level, Z_DEFLATED, MAX_WBITS, DEF_MEM_LEVEL,
+                         Z_DEFAULT_STRATEGY, version, stream_size);
 }
 
 int deflateInit2_(z_streamp strm, int level, int method, int windowBits,

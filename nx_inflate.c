@@ -1794,21 +1794,9 @@ int nx_inflateGetHeader(z_streamp strm, gz_headerp head)
 #ifdef ZLIB_API
 int inflateInit_(z_streamp strm, const char *version, int stream_size)
 {
-	int rc;
-
-	strm->state = NULL;
-	if(gzip_selector == GZIP_MIX){
-		/*call sw and nx initialization */
-		rc = s_inflateInit_(strm, version, stream_size);
-		rc = nx_inflateInit_(strm, version, stream_size);
-	}else if(gzip_selector == GZIP_NX){
-		rc = nx_inflateInit_(strm, version, stream_size);
-	}else{
-		rc = s_inflateInit_(strm, version, stream_size);
-	}
-	
-	return rc;
+	return inflateInit2_(strm, DEF_WBITS, version, stream_size);
 }
+
 int inflateInit2_(z_streamp strm, int windowBits, const char *version, int stream_size)
 {
 	int rc;

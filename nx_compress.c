@@ -95,32 +95,27 @@ uLong nx_compressBound(uLong sourceLen)
 
 int compress(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen)
 {
-	int rc; 
-	
-	if(gzip_selector == GZIP_MIX){
-	//TBD
-	}else if(gzip_selector == GZIP_NX){
-		rc = nx_compress(dest, destLen, source, sourceLen);
-	}else{
-		rc = s_compress(dest, destLen, source, sourceLen);
-	}
-
-	return rc;
+	return compress2(dest, destLen, source, sourceLen, Z_DEFAULT_COMPRESSION);
 }
+
 int compress2(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen, int level)
 {
 	int rc;
 
 	if(gzip_selector == GZIP_MIX){
-	//TBD
+		rc = s_compress2(dest, destLen, source, sourceLen, level);
 	}else if(gzip_selector == GZIP_NX){
 		rc = nx_compress2(dest, destLen, source, sourceLen, level);
 	}else{
 		rc = s_compress2(dest, destLen, source, sourceLen, level);
 	}
 
+	/* statistic*/
+	zlib_stats_inc(&zlib_stats.compress);
+
 	return rc;
 }
+
 uLong compressBound(uLong sourceLen)
 {
 	return	NX_MAX(nx_deflateBound(NULL, sourceLen),
