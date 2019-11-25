@@ -61,8 +61,8 @@
 #define GZIP_NX		0x02 /* nx gzip */
 #define GZIP_MIX	0x03 /* mix sw and nx*/
 
-#define COMPRESS_THRESHOLD	(64*1024)
-#define DECOMPRESS_THRESHOLD	(64*1024)
+#define COMPRESS_THRESHOLD	(4*1024)
+#define DECOMPRESS_THRESHOLD	(4*1024)
 
 
 #define NX_MIN(X,Y) (((X)<(Y))?(X):(Y))
@@ -99,7 +99,7 @@ extern FILE *nx_gzip_log;
 extern FILE *nx_gzip_critical_log;
 void nx_print_dde(nx_dde_t *ddep, const char *msg);
 extern int gzip_selector;
-
+extern int nx_ratio;
 /* common config variables for all streams */
 struct nx_config_t {
 	long     page_sz;
@@ -319,10 +319,10 @@ static inline int use_nx_inflate(z_streamp strm)
 	
 	/* #2 Percentage*/
 	rnd = __ppc_get_timebase();
-	if( rnd%4 < 2){ /*50% - 50%*/
-		return 0;
+	if( rnd%100 < nx_ratio){ /*use nx to nx_ratio*/
+		return 1; /*nx*/
 	}else{
-		return 1;
+		return 0;
 	}
 }
 

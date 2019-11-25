@@ -77,6 +77,7 @@ static int disable_saved_nx_devp = 1;
 
 int nx_dbg = 0;
 int gzip_selector = GZIP_NX;
+int nx_ratio = 100;
 int nx_gzip_chip_num = -1;		
 
 int nx_gzip_trace = 0x0;
@@ -927,6 +928,7 @@ void nx_hw_init(void)
 	char *paste_retries = getenv("NX_GZIP_PASTE_RETRIES"); /* number of retries if vas_paste() failed */
 	/* number of retries if nx_submit_job() returns ERR_NX_TRANSLATION */
 	char *pgfault_retries = getenv("NX_GZIP_PGFAULT_RETRIES");
+	char *nx_ratio_s     = getenv("NX_GZIP_RATIO"); /*Select the nxgzip ratio(0-100, default is 100%*/
 
 	/* Init nx_config a default value firstly */
 	nx_config.page_sz = NX_MIN( sysconf(_SC_PAGESIZE), 1<<16 );
@@ -987,6 +989,8 @@ void nx_hw_init(void)
 			pgfault_retries = nx_get_cfg("pgfault_retries", &cfg_tab);
 		if (!accel_s)
 			accel_s = nx_get_cfg("nx_selector", &cfg_tab);
+		if (!nx_ratio_s)
+			nx_ratio_s = nx_get_cfg("nx_ratio", &cfg_tab);
 	}
 
 	/* log file should be initialized first*/
@@ -1020,6 +1024,15 @@ void nx_hw_init(void)
 		prt("gzip_selector: %d (1-SW;2-NX;3-MIX)\n", gzip_selector);
 	}
 	
+	if (nx_ratio_s != NULL) {
+		nx_ratio = str_to_num(nx_ratio_s);
+		if (nx_ratio < 0 || nx_ratio > 100){
+			prt_err("NXGZIP Ratio is out of range(0,100), use default 100.\n");
+			nx_ratio = 100;
+		}
+		prt("Use NX Ratio: %d \n", nx_ratio);
+	}
+
 	if (trace_s != NULL)
 		nx_gzip_trace = strtol(trace_s, (char **)NULL, 0);
 
