@@ -32,8 +32,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
- * Authors: Bulent Abali <abali@us.ibm.com>
- *          Xiao Hua Zeng <zengxhsh@cn.ibm.com>
+ * Authors: Xiao Hua Zeng <zengxhsh@cn.ibm.com>
  *
  */
 
@@ -59,7 +58,6 @@
 
 #define DEFAULT_ZLIB_PATH "/lib64/libz.so.1"
 
-//#define DEFAULT_ZLIB_PATH "/home/david/nxgzip/zlib-1.2.7/libz.so.1"
 
 static void *sw_handler = NULL;
 
