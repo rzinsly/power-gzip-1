@@ -65,7 +65,7 @@ typedef void * __attribute__ ((__may_alias__)) pvoid_t;
 
 #define register_sym(name)						\
 	do {								\
-		dlerror();    /* Clear any existing error */		\
+		dlerror();	/* Clear any existing error */		\
 		*(pvoid_t *)(&p_##name) = dlsym(sw_handler, #name);		\
 		if ((error = dlerror()) != NULL) {			\
 			prt_err("%s\n", error);			\
@@ -76,7 +76,7 @@ typedef void * __attribute__ ((__may_alias__)) pvoid_t;
 	do {								\
 		if ((name) == NULL) {					\
 			prt_err("%s not loadable, consider using a "	\
-			       "newer libz version.\n", #name);		\
+				"newer libz version.\n", #name);		\
 			return (rc);					\
 		}							\
 	} while (0)
@@ -94,16 +94,16 @@ int s_deflateInit_(z_streamp strm, int level, const char* version, int stream_si
 	int rc;
 
 	check_sym(p_deflateInit_, Z_STREAM_ERROR);
-        rc = (* p_deflateInit_)(strm, level, version, stream_size);
-        return rc;
+	rc = (* p_deflateInit_)(strm, level, version, stream_size);
+	return rc;
 }
 
 static int (* p_deflateInit2_)(z_streamp strm, int level, int method,
 			int windowBits, int memLevel, int strategy,
 			const char *version, int stream_size);
 int s_deflateInit2_(z_streamp strm, int level, int method,
-		    int windowBits, int memLevel, int strategy,
-		    const char *version, int stream_size)
+		int windowBits, int memLevel, int strategy,
+		const char *version, int stream_size)
 {
 	int rc;
 
@@ -135,9 +135,9 @@ int s_deflateResetKeep(z_streamp strm)
 }
 
 static int (* p_deflateSetDictionary)(z_streamp strm, const Bytef *dictionary,
-				      uInt  dictLength);
+				uInt dictLength);
 int s_deflateSetDictionary(z_streamp strm, const Bytef *dictionary,
-			   uInt  dictLength)
+			uInt dictLength)
 {
 	check_sym(p_deflateSetDictionary, Z_STREAM_ERROR);
 	return (* p_deflateSetDictionary)(strm, dictionary, dictLength);
@@ -182,16 +182,15 @@ int s_inflateInit_(z_streamp strm, const char *version, int stream_size)
 	return rc;
 }
 
-static int (* p_inflateInit2_)(z_streamp strm, int  windowBits,
-			       const char *version, int stream_size);
-int s_inflateInit2_(z_streamp strm, int  windowBits, const char *version,
-		    int stream_size)
+static int (* p_inflateInit2_)(z_streamp strm, int windowBits,
+			const char *version, int stream_size);
+int s_inflateInit2_(z_streamp strm, int windowBits, const char *version,
+		int stream_size)
 {
 	int rc;
 
 	check_sym(p_inflateInit2_, Z_STREAM_ERROR);
 	rc = (* p_inflateInit2_)(strm, windowBits, version, stream_size);
-	prt_info("p_inflateInit2_: return %d\n",rc);
 	return rc;
 }
 
@@ -218,9 +217,9 @@ int s_inflateResetKeep(z_streamp strm)
 }
 
 static int (* p_inflateSetDictionary)(z_streamp strm, const Bytef *dictionary,
-				 uInt  dictLength);
+				 uInt dictLength);
 int s_inflateSetDictionary(z_streamp strm, const Bytef *dictionary,
-			   uInt  dictLength)
+			uInt dictLength)
 {
 	check_sym(p_inflateSetDictionary, Z_STREAM_ERROR);
 	return (* p_inflateSetDictionary)(strm, dictionary, dictLength);
@@ -275,9 +274,9 @@ void sw_zlib_init(void)
 		prt_err(" %s\n", dlerror());
 		return;
 	}
-	
+
 	register_sym(zlibVersion);
-	
+
 	register_sym(deflateInit_);
 	register_sym(deflateInit2_);
 	register_sym(deflateReset);
@@ -311,6 +310,6 @@ void sw_zlib_close(void)
 	if(sw_handler != NULL){
 		dlclose(sw_handler);
 	}
-	
+
 	return;
 }
