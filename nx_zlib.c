@@ -752,15 +752,15 @@ static void print_stats(void)
 
 	prt_stat("deflate data length: %ld KiB\n", s->deflate_len/1024);
 #ifndef __KERNEL__
-	prt_stat("deflate time: %1.2f secs\n",nxtime_to_us(s->deflate_time)/1000000);
-	prt_stat("deflate rate: %1.2f MiB/s\n", s->deflate_len/(1024*1024)/(nxtime_to_us(s->deflate_time)/1000000));
+	prt_stat("deflate time: %1.2f secs\n",(float)s->deflate_time/1000000);
+	prt_stat("deflate rate: %1.2f MiB/s\n",s->deflate_len/(1024*1024)/((float)s->deflate_time/1000000));
 #endif
 	prt_stat("deflate lat: %lld (us)\n", s->deflate_time/s->deflate);
 
 	prt_stat("inflate data length: %ld KiB\n", s->inflate_len/1024);
 #ifndef __KERNEL__
-	prt_stat("inflate time: %1.2f secs\n",nxtime_to_us(s->inflate_time)/1000000);
-	prt_stat("inflate rate: %1.2f MiB/s\n", s->inflate_len/(1024*1024)/(nxtime_to_us(s->inflate_time)/1000000));
+	prt_stat("inflate time: %1.2f secs\n", (float)s->inflate_time/1000000);
+	prt_stat("inflate rate: %1.2f MiB/s\n", s->inflate_len/(1024*1024)/((float)s->inflate_time/1000000));
 #endif        
 	prt_stat("inflate lat: %lld (us)\n", s->inflate_time/s->inflate);
 	
@@ -902,7 +902,7 @@ void nx_hw_init(void)
 {
 	int nx_count = 0;
 	int rc = 0;
-
+	
 	/* only init one time for the program */
 	if (nx_init_done == 1) return;
 
@@ -1015,10 +1015,10 @@ void nx_hw_init(void)
 	if (nx_count == 0) {
 		prt_err("NX-gzip accelerators found: %d\n", nx_count);		  
 		gzip_selector = GZIP_SW; /*fallback to use software zlib*/
-		//return;
 	}
 
 	prt("%d NX GZIP Accelerator Found!\n",nx_count);
+
 	if(accel_s != NULL){
 		gzip_selector = str_to_num(accel_s);	
 		prt("gzip_selector: %d (1-SW;2-NX;3-MIX)\n", gzip_selector);
@@ -1146,7 +1146,6 @@ static void _nx_hwinit(void) __attribute__((constructor));
 static void _nx_hwinit(void)
 {
 	nx_hw_init();
-	/* nx_open(-1); */
 	sw_zlib_init();
 }
 
@@ -1160,7 +1159,6 @@ void nx_hw_done(void)
 	if (nx_gzip_log != stderr) {
 		nx_gzip_log = NULL;
 	}
-	sw_zlib_close();
 }
 
 static void _nx_hwdone(void) __attribute__((destructor));
@@ -1173,6 +1171,7 @@ static void _nx_hwdone(void)
 	}
 
 	nx_hw_done();
+	sw_zlib_close();
 	return;
 }
 

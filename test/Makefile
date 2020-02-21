@@ -1,4 +1,10 @@
-CC = gcc
+OPTCC = /opt/at11.0/bin/gcc
+ifneq ("$(wildcard $(OPTCC))","")
+        CC = $(OPTCC)
+else
+        CC = gcc
+endif
+
 FLG = -std=gnu11
 CFLAGS = -O3 $(FLG)
 
@@ -31,4 +37,4 @@ clean:
 
 .SECONDEXPANSION:
 test_%: $$(obj_$$@)
-	$(CC) $(CFLAGS) $(INC) $(LIB) -o $@ $^  -lnxz -lpthread
+	$(CC) $(CFLAGS) $(INC) $(LIB) -o $@ $^  -lnxz -lpthread -ldl

@@ -171,7 +171,6 @@ int nx_inflateInit2_(z_streamp strm, int windowBits, const char *version, int st
 	int ret;
 	nx_streamp s;
 	nx_devp_t h;
-	void *temp = NULL;
 
 	prt_info("%s:%d strm %p\n", __FUNCTION__, __LINE__, strm);
 
@@ -181,13 +180,6 @@ int nx_inflateInit2_(z_streamp strm, int windowBits, const char *version, int st
 
 	if (strm == Z_NULL) return Z_STREAM_ERROR;
 
-	/*If the stream has been initialized by sw*/
-	if(strm->state && (0 == has_nx_state(strm))){ 
-		temp = (void *)strm->state; /*keep this pointer*/
-		strm->state = NULL;
-		prt_info("this stream has been initialized by sw\n");   
-	}
-	
 	nx_hw_init();
 
 	strm->msg = Z_NULL; /* in case we return an error */
@@ -224,11 +216,6 @@ int nx_inflateInit2_(z_streamp strm, int windowBits, const char *version, int st
 	s->switchable = 0;
 	s->bak_stream = NULL;
 	
-	if(temp){ /*keep the software state*/
-		s->bak_stream = temp;
-		s->switchable = 1;
-	}
-
 	ret = nx_inflateReset2(strm, windowBits);
 	if (ret != Z_OK) {
 		prt_err("nx_inflateReset2\n");
@@ -1800,14 +1787,35 @@ int inflateInit_(z_streamp strm, const char *version, int stream_size)
 int inflateInit2_(z_streamp strm, int windowBits, const char *version, int stream_size)
 {
 	int rc;
+	void *temp = NULL;
+	nx_streamp s;
 	
 	/* statistic */
 	zlib_stats_inc(&zlib_stats.inflateInit);
-
+	prt_info("call inflateInit2_,gzip_selector:%d\n", gzip_selector);
 	strm->state = NULL;
 	if(gzip_selector == GZIP_MIX){
 		rc = s_inflateInit2_(strm, windowBits, version, stream_size);
+		if(rc != Z_OK) return rc;
+
+		/*If the stream has been initialized by sw*/
+		if(strm->state && (0 == has_nx_state(strm))){ 
+			temp = (void *)strm->state; /*record the sw context*/
+			strm->state = NULL;
+			prt_info("this stream has been initialized by sw\n");
+		}
+
 		rc = nx_inflateInit2_(strm, windowBits, version, stream_size);
+		if(rc != Z_OK){
+			s_inflateEnd(strm);
+			return rc;
+		}
+
+		if(temp){ /* recorded sw context*/
+			s = (nx_streamp) strm->state;
+			s->bak_stream = temp;
+			s->switchable = 1;
+		}
 	}else if(gzip_selector == GZIP_NX){
 		rc = nx_inflateInit2_(strm, windowBits, version, stream_size);
 	}else{
@@ -1939,12 +1947,28 @@ int inflateSetDictionary(z_streamp strm, const Bytef *dictionary, uInt dictLengt
 
 int inflateCopy(z_streamp dest, z_streamp source)
 {
-	return nx_inflateCopy(dest, source);
+	int rc;
+
+	if (0 == has_nx_state(source)){
+		rc = s_inflateCopy(dest, source);
+	}else{
+		rc = nx_inflateCopy(dest, source);
+	}
+
+	return rc;
 }
 
 int inflateGetHeader(z_streamp strm, gz_headerp head)
 {
-	return nx_inflateGetHeader(strm, head);
+	int rc;
+
+	if (0 == has_nx_state(strm)){
+		rc = s_inflateGetHeader(strm, head);
+	}else{
+		rc = nx_inflateGetHeader(strm, head);
+	}
+
+	return rc;
 }
 
 #endif

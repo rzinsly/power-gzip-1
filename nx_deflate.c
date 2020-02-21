@@ -818,17 +818,9 @@ int nx_deflateInit2_(z_streamp strm, int level, int method, int windowBits,
 	int wrap;
 	nx_streamp s;
 	nx_devp_t h;
-	void *temp = NULL;
-
+	
 	if (strm == Z_NULL) return Z_STREAM_ERROR;
 	
-	/*If the stream has been initialized by sw*/
-	if(strm->state && (0 == has_nx_state(strm))){ 
-		temp = (void *)strm->state; /*keep this pointer*/
-		strm->state = NULL;
-		prt_info("this stream has been initialized by sw\n");	
-	}
-
 	nx_hw_init();
 
 	strm->msg = Z_NULL;
@@ -916,11 +908,6 @@ int nx_deflateInit2_(z_streamp strm, int level, int method, int windowBits,
 
 	strm->state = (void *) s; /* remember the hardware state */
 	rc = nx_deflateReset(strm);
-
-	if(temp){ /*keep the software state*/
-		s->bak_stream = temp;
-		s->switchable = 1; 
-	}
 
 	return rc;
 }
@@ -2458,22 +2445,46 @@ int deflateInit2_(z_streamp strm, int level, int method, int windowBits,
 		int stream_size)
 {
 	int rc;
+	void *temp = NULL;
+	nx_streamp s;
 
 	/* statistic */
 	zlib_stats_inc(&zlib_stats.deflateInit); 
 
-
 	strm->state = NULL;
 	if(gzip_selector == GZIP_MIX){
+
 		/*call sw and nx initialization */
 		rc = s_deflateInit2_(strm, level, method, windowBits, memLevel, strategy, version, stream_size);
+		if(rc != Z_OK)
+			return rc;
+
+		/*If the stream has been initialized by sw*/
+		if(strm->state && (0 == has_nx_state(strm))){
+			temp = (void *)strm->state; /*keep this sw context pointer*/
+			strm->state = NULL;
+			prt_info("this stream has been initialized by sw\n");
+		}
+
 		rc = nx_deflateInit2_(strm, level, method, windowBits, memLevel, strategy, version, stream_size);
+		if(rc != Z_OK){
+			s_deflateEnd(strm); /*release the sw initializtion*/
+			return rc;
+		}
+
+		if(temp){ /*record the sw context */
+			s = (nx_streamp) strm->state;
+			s->bak_stream = temp;
+			s->switchable = 1; 
+		}
+
+
 	}else if(gzip_selector == GZIP_NX){
 		rc = nx_deflateInit2_(strm, level, method, windowBits, memLevel, strategy, version, stream_size);
 	}else{
 		rc = s_deflateInit2_(strm, level, method, windowBits, memLevel, strategy, version, stream_size);
 	}
-	
+
 	return rc;
 }
 
@@ -2589,9 +2600,8 @@ unsigned long deflateBound(z_streamp strm, unsigned long sourceLen)
 	}else{
 		rc = nx_deflateBound(strm, sourceLen);
 	}   
-	
+
 	return rc; 
-	
 }
 
 int deflateSetHeader(z_streamp strm, gz_headerp head)
@@ -2622,7 +2632,15 @@ int deflateSetDictionary(z_streamp strm, const Bytef *dictionary, uInt  dictLeng
 
 int deflateCopy(z_streamp dest, z_streamp source)
 {
-	return nx_deflateCopy(dest, source);
+	int rc;
+
+	if (0 == has_nx_state(source)){
+		rc = s_deflateCopy(dest, source);
+	}else{
+		rc = nx_deflateCopy(dest, source);
+	}
+
+	return rc;
 }
 
 #endif

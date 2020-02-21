@@ -51,27 +51,27 @@ gunzip_nx_test:		$(GUN_O)
 	$(CC) $(CFLAGS) -o gunzip_nx_test $(GUN_O)
 
 zpipe:	../libnxz.a zpipe.c
-	$(CC) $(CFLAGS) -I../inc_nx -I../ -L../ -L/usr/lib/ -o zpipe zpipe.c ../libnxz.a -lpthread
+	$(CC) $(CFLAGS) -I../inc_nx -I../ -L../ -L/usr/lib/ -o zpipe zpipe.c ../libnxz.a -lpthread -ldl
 
 zpipe_dict:  zpipe_dict.c
 	$(CC) $(CFLAGS) -o zpipe_dict_zlib zpipe_dict.c -lz
-	$(CC) $(CFLAGS) -I../inc_nx -I../ -L../ -L/usr/lib/ -o zpipe_dict_nx zpipe_dict.c ../libnxz.a -lpthread
+	$(CC) $(CFLAGS) -I../inc_nx -I../ -L../ -L/usr/lib/ -o zpipe_dict_nx zpipe_dict.c ../libnxz.a -lpthread -ldl
 
 crc_perf_test:  crc_perf_test.c
 	$(CC) $(CFLAGS) -o crc_perf_test_zlib crc_perf_test.c -lz
-	$(CC) $(CFLAGS) -o crc_perf_test_vmx  crc_perf_test.c ../libnxz.a -lpthread
+	$(CC) $(CFLAGS) -o crc_perf_test_vmx  crc_perf_test.c ../libnxz.a -lpthread -ldl
 
 makedata:  makedata.c
 	$(CC) $(CFLAGS) -o makedata makedata.c
 
 gzm:	../libnxz.a gzm.c
-	$(CC) $(CFLAGS) -I../inc_nx -I../ -L../ -L/usr/lib/ -o gzm gzm.c ../libnxz.a -lpthread
+	$(CC) $(CFLAGS) -I../inc_nx -I../ -L../ -L/usr/lib/ -o gzm gzm.c ../libnxz.a -lpthread -ldl
 
 compdecomp:	compdecomp.c ../libnxz.a
-	$(CC) $(CFLAGS) -I../inc_nx -I../ -L../ -L/usr/lib/ -o compdecomp compdecomp.c ../libnxz.a -lpthread
+	$(CC) $(CFLAGS) -I../inc_nx -I../ -L../ -L/usr/lib/ -o compdecomp compdecomp.c ../libnxz.a -lpthread -ldl
 
 compdecomp_th: compdecomp_th.c  ../libnxz.a
-	$(CC) $(CFLAGS) -I../inc_nx -I../ -L../ -L/usr/lib/ -o compdecomp_th compdecomp_th.c ../libnxz.a -lpthread
+	$(CC) $(CFLAGS) -I../inc_nx -I../ -L../ -L/usr/lib/ -o compdecomp_th compdecomp_th.c -lz -lpthread -ldl
 
 nx_gzip: nx_gzip.c
 	$(CC) $(CFLAGS) -o $@ $^ -lz

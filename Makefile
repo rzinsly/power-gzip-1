@@ -10,9 +10,9 @@ ZLIB = -DZLIB_API
 CFLAGS = $(FLG) $(SFLAGS) $(ZLIB) #-mcpu=power9 #-DNXTIMER
 
 SRCS = nx_inflate.c nx_deflate.c nx_zlib.c nx_crc.c nx_dht.c nx_dhtgen.c nx_dht_builtin.c \
-       nx_adler32.c gzip_vas.c nx_compress.c nx_uncompr.c crc32_ppc.c crc32_ppc_asm.S nx_utils.c
+       nx_adler32.c gzip_vas.c nx_compress.c nx_uncompr.c crc32_ppc.c crc32_ppc_asm.S nx_utils.c sw_zlib.c
 OBJS = nx_inflate.o nx_deflate.o nx_zlib.o nx_crc.o nx_dht.o nx_dhtgen.o nx_dht_builtin.o \
-       nx_adler32.o gzip_vas.o nx_compress.o nx_uncompr.o crc32_ppc.o crc32_ppc_asm.o nx_utils.o
+       nx_adler32.o gzip_vas.o nx_compress.o nx_uncompr.o crc32_ppc.o crc32_ppc_asm.o nx_utils.o sw_zlib.o
 
 VERSION ?= $(shell git describe --tags | cut -d - -f 1,2 | tr - . | cut -c 2-)
 SOVERSION = $(shell echo $(VERSION) | cut -d . -f 1)
@@ -35,7 +35,7 @@ $(STATICLIB): $(OBJS)
 
 $(SHAREDLIB): $(OBJS)
 	rm -f $@ $(LIBLINK) 
-	$(CC) -shared  -Wl,-soname,$(SHAREDSONAMELIB),--version-script,Versions -o $@ $(OBJS)
+	$(CC) -shared  -Wl,-soname,$(SHAREDSONAMELIB),--version-script,Versions -o $@ $(OBJS) -ldl
 	ln -s $@ $(LIBLINK)
 	ln -s $@ $(SHAREDSONAMELIB)
 
