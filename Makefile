@@ -1,13 +1,23 @@
-OPTCC = /opt/at11.0/bin/gcc
-ifneq ("$(wildcard $(OPTCC))","")
-	CC = $(OPTCC)
-else
-	CC = gcc
-endif
+ATDIR = /opt/at11.0
+#OPTCC = $(ATDIR)/bin/gcc
+
+## Common flags
 FLG = -std=gnu11
 SFLAGS = -O3 -fPIC -D_LARGEFILE64_SOURCE=1 -DHAVE_HIDDEN
 ZLIB = -DZLIB_API
-CFLAGS = $(FLG) $(SFLAGS) $(ZLIB) #-mcpu=power9 #-DNXTIMER
+
+## Compiler related flags
+ifneq ("$(wildcard $(OPTCC))","")
+	CC = $(OPTCC)
+	SFLAGS += -mcpu=power9
+	ZLIB_PATH ?= $(ATDIR)/lib64/libz.so.1
+else
+	CC = gcc
+	SFLAGS += -DNX_NO_CPU_PRI
+	ZLIB_PATH ?= /lib64/libz.so.1
+endif
+
+CFLAGS += $(FLG) $(SFLAGS) $(ZLIB) -DZLIB_PATH=\"$(ZLIB_PATH)\" #-DNXTIMER
 
 SRCS = nx_inflate.c nx_deflate.c nx_zlib.c nx_crc.c nx_dht.c nx_dhtgen.c nx_dht_builtin.c \
        nx_adler32.c gzip_vas.c nx_compress.c nx_uncompr.c crc32_ppc.c crc32_ppc_asm.S nx_utils.c sw_zlib.c
