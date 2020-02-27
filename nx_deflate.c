@@ -49,6 +49,7 @@
 #include <sys/ioctl.h>
 #include <endian.h>
 #include <pthread.h>
+#include <syscall.h>
 #include "zlib.h"
 #include "nx_dbg.h"
 #include "copy-paste.h"
@@ -2539,6 +2540,7 @@ int deflate(z_streamp strm, int flush)
 	unsigned int avail_in_slot, avail_out_slot;
 	uint64_t t1, t2, t_diff;
 	unsigned int avail_in, avail_out;
+	int cpuid = 0;
 
 	/* statistic*/
 	if (nx_gzip_gather_statistics()) {
@@ -2573,7 +2575,13 @@ int deflate(z_streamp strm, int flush)
 		}else{
 			zlib_stats_inc(&zlib_stats.deflate_nx);
 		}
-		
+
+		syscall(SYS_getcpu, NULL, &cpuid, NULL);
+		if(cpuid == 0)
+			zlib_stats_inc(&zlib_stats.deflate0);
+		else
+			zlib_stats_inc(&zlib_stats.deflate8);
+
 		__atomic_fetch_add(&zlib_stats.deflate_len, avail_in,  __ATOMIC_RELAXED);
 
                 t2 = get_nxtime_now();

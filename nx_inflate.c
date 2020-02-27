@@ -49,6 +49,7 @@
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 #include <endian.h>
+#include <syscall.h>
 #include "zlib.h"
 #include "copy-paste.h"
 #include "nx-ftw.h"
@@ -1884,6 +1885,7 @@ int inflate(z_streamp strm, int flush)
 	unsigned int avail_in_slot, avail_out_slot;
 	uint64_t t1, t2, t_diff;
 	unsigned int avail_in, avail_out;
+	int cpuid = 0;
 	
 	 if (strm == NULL || strm->state == NULL) return Z_STREAM_ERROR;
 
@@ -1921,6 +1923,12 @@ int inflate(z_streamp strm, int flush)
 		}else{
 			zlib_stats_inc(&zlib_stats.inflate_nx);
 		}
+
+		syscall(SYS_getcpu, NULL, &cpuid, NULL);
+		if(cpuid == 0)
+			zlib_stats_inc(&zlib_stats.inflate0);
+		else
+			zlib_stats_inc(&zlib_stats.inflate8);
 
 		__atomic_fetch_add(&zlib_stats.inflate_len, avail_in,  __ATOMIC_RELAXED);
 

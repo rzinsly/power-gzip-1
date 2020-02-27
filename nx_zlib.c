@@ -710,6 +710,8 @@ static void print_stats(void)
 	prt_stat("deflate: %ld\n", s->deflate);
 	prt_stat("\tdeflate(sw): %ld\n", s->deflate_sw);
 	prt_stat("\tdeflate(nx): %ld\n", s->deflate_nx);
+	prt_stat("\tdeflate0: %ld\n", s->deflate0);
+	prt_stat("\tdeflate8: %ld\n", s->deflate8);
 	
 	for (i = 0; i < ARRAY_SIZE(s->deflate_avail_in); i++) {
 		if (s->deflate_avail_in[i] == 0)
@@ -733,6 +735,8 @@ static void print_stats(void)
 	prt_stat("inflate: %ld\n", s->inflate);
 	prt_stat("\tinflate(sw): %ld\n", s->inflate_sw);
 	prt_stat("\tinflate(nx): %ld\n", s->inflate_nx);
+	prt_stat("\tinflate0: %ld\n", s->inflate0);
+	prt_stat("\tinflate8: %ld\n", s->inflate8);
 	
 	for (i = 0; i < ARRAY_SIZE(s->inflate_avail_in); i++) {
 		if (s->inflate_avail_in[i] == 0)

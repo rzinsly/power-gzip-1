@@ -459,6 +459,8 @@ struct zlib_stats {
 	unsigned long deflate;
 	unsigned long deflate_sw;
 	unsigned long deflate_nx;
+	unsigned long deflate0;
+	unsigned long deflate8;
 	unsigned long deflate_avail_in[ZLIB_SIZE_SLOTS];
 	unsigned long deflate_avail_out[ZLIB_SIZE_SLOTS];
 	unsigned long deflateReset;
@@ -477,6 +479,8 @@ struct zlib_stats {
 	unsigned long inflate;
 	unsigned long inflate_sw;
 	unsigned long inflate_nx;
+	unsigned long inflate0;
+	unsigned long inflate8;
 	unsigned long inflate_avail_in[ZLIB_SIZE_SLOTS];
 	unsigned long inflate_avail_out[ZLIB_SIZE_SLOTS];
 	unsigned long inflateReset;
