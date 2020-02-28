@@ -102,6 +102,7 @@ extern FILE *nx_gzip_critical_log;
 void nx_print_dde(nx_dde_t *ddep, const char *msg);
 extern int gzip_selector;
 extern int nx_ratio;
+extern uint64_t ppc_freq;
 /* common config variables for all streams */
 struct nx_config_t {
 	long     page_sz;
@@ -531,11 +532,7 @@ static inline uint64_t get_nxtime_diff(uint64_t t1, uint64_t t2)
 #ifndef __KERNEL__
 static inline uint64_t nxtime_to_us(uint64_t nxtime)
 {
-	uint64_t freq;
-
-	freq = __ppc_get_timebase_freq();
-
-	return nxtime * 1000000 / freq ;
+	return (double)(nxtime * 1000000 / ppc_freq) ;
 }
 #endif
 

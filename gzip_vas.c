@@ -77,6 +77,7 @@ void *nx_fault_storage_address;
 uint64_t dbgtimer=0;
 
 const uint64_t timeout_seconds = 60;
+extern uint64_t ppc_freq;
 
 struct nx_handle {
 	int fd;
@@ -181,7 +182,7 @@ static uint64_t nx_wait_ticks(uint64_t ticks, uint64_t accumulated_ticks, int do
 {
 	uint64_t ts, te, mhz, sleep_overhead, sleep_threshold;
 
-	mhz = __ppc_get_timebase_freq() / 1000000; /* 500 MHz */
+	mhz = ppc_freq / 1000000; /* 500 MHz */
 	ts = te =  __ppc_get_timebase();  /* start */
 
 	sleep_overhead = 30000;  /* usleep(0) overhead */
@@ -212,7 +213,7 @@ static int nx_wait_for_csb( nx_gzip_crb_cpb_t *cmdp )
 {
 	uint64_t t = 0;
 	const int may_sleep = 1;
-	uint64_t onesecond = __ppc_get_timebase_freq();
+	uint64_t onesecond = ppc_freq;
 
 	while (getnn( cmdp->crb.csb, csb_v ) == 0)
 	{
@@ -288,7 +289,7 @@ int nxu_run_job(nx_gzip_crb_cpb_t *cmdp, void *handle)
 
 			ticks_total = nx_wait_ticks(500, ticks_total, no_sleep);
 
-			if (ticks_total > (timeout_seconds * __ppc_get_timebase_freq()))
+			if (ticks_total > (timeout_seconds * ppc_freq))
 				return -ETIMEDOUT;
 
 			++retries;

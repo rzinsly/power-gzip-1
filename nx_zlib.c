@@ -88,6 +88,7 @@ int nx_strategy_override = 1;           /* 0 is fixed huffman, 1 is dynamic huff
 pthread_mutex_t zlib_stats_mutex; /* mutex to protect global stats */
 pthread_mutex_t nx_devices_mutex; /* mutex to protect global stats */
 struct zlib_stats zlib_stats;	/* global statistics */
+uint64_t ppc_freq = 512000000; /*initial glocal frequency*/
 
 struct sigaction act;
 void sigsegv_handler(int sig, siginfo_t *info, void *ctx);
@@ -957,6 +958,8 @@ void nx_hw_init(void)
 	nx_config.csb_poll_max = 2000000; /* est. 120 seconds */
 	nx_config.paste_retries = 5000;
 	nx_config.pgfault_retries = INT_MAX;
+
+	ppc_freq = __ppc_get_timebase_freq();
 
 	if (!cfg_file_s)
 		cfg_file_s = "./nx-zlib.conf";
