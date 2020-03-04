@@ -13,7 +13,6 @@ ifneq ("$(wildcard $(OPTCC))","")
 	ZLIB_PATH ?= $(ATDIR)/lib64/libz.so.1
 else
 	CC = gcc
-	SFLAGS += -DNX_NO_CPU_PRI
 	ZLIB_PATH ?= /lib64/libz.so.1
 endif
 
@@ -44,7 +43,7 @@ $(STATICLIB): $(OBJS)
 	ar rcs -o $@ $(OBJS)
 
 $(SHAREDLIB): $(OBJS)
-	rm -f $@ $(LIBLINK) 
+	rm -f $@ $(LIBLINK) $(SHAREDSONAMELIB) 
 	$(CC) -shared  -Wl,-soname,$(SHAREDSONAMELIB),--version-script,Versions -o $@ $(OBJS) -ldl
 	ln -s $@ $(LIBLINK)
 	ln -s $@ $(SHAREDSONAMELIB)
