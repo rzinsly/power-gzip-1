@@ -289,25 +289,17 @@ int nx_inflate(z_streamp strm, int flush)
 	if (s == NULL) return Z_STREAM_ERROR;
 
 	/* check for sw deflate first*/
-	//if( has_nx_state(strm) && s->switchable && (strm->avail_in <= DECOMPRESS_THRESHOLD)){
 	if( has_nx_state(strm) && s->switchable && (0 == use_nx_inflate(strm))){
 		/*Use software zlib, switch the sw and hw state*/
 		s = (nx_streamp) strm->state;
-		s->switchable = 0; /*decided to use sw zlib and not switchable */
-		temp  = s->bak_stream;  /*sw pointer*/
+		s->switchable = 0; 	/*decided to use sw zlib and not switchable */
+		temp  = s->bak_stream;  /*save the sw pointer*/
 		s->bak_stream = NULL;
-	
-		/*free the hw resource, copied from nx_inflateEnd()*/	
-		nx_free_buffer(s->fifo_in, s->len_in, 0);
-		nx_free_buffer(s->fifo_out, s->len_out, 0);
-		nx_close(s->nxdevp);
-	
-		if (s->gzhead != NULL) nx_free_buffer(s->gzhead, sizeof(gz_header), 0);
-		nx_free_buffer(s, sizeof(*s), 0);
 
-		prt_info("clean the hw resource,rc=%d\n",rc);
-		
-		strm->state = temp;
+		rc = nx_inflateEnd(strm); /*free the hw resource*/
+		prt_info("call nx_inflateEnd to clean the hw resource,rc=%d\n",rc);
+	
+		strm->state = temp; /*restore the sw pointer*/
 		prt_info("call software inflate,len=%d\n", strm->avail_in);
 		rc = s_inflate(strm,flush);
 		prt_info("call software inflate, rc=%d\n", rc);
@@ -316,10 +308,10 @@ int nx_inflate(z_streamp strm, int flush)
 		/*decide to use nx here, release the sw resource */
 		temp  = (void *)strm->state;
 		strm->state = s->bak_stream;
-		
+
 		rc = s_inflateEnd(strm);
 		prt_info("call s_inflateEnd to clean the software resource,rc=%d\n",rc);
-		
+
 		strm->state = temp;
 		s->bak_stream = NULL;
 	}
